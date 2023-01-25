@@ -256,39 +256,36 @@ namespace hdt
 
 		void onFrame();
 
-		void** vtbl0;
-		void** vtbl1;
-		bool quitGame; // 10
-		char unk[0x05];
+		char unk[0x16];
 		bool gamePaused; // 16
 	};
-	static_assert(offsetof(UnkEngine, quitGame) == 0x10);
-	static_assert(offsetof(UnkEngine, gamePaused) == 0x16);
 
 	void UnkEngine::onFrame()
 	{
 		CALL_MEMBER_FN(this, onFrame)();
+		FrameEvent e;
+		e.gamePaused = this->gamePaused;
+		g_frameEventDispatcher.dispatch(e);
+	}
 
-		if (quitGame)
-		{
-			g_shutdownEventDispatcher.dispatch(ShutdownEvent());
-		}
-		else
-		{
-			FrameEvent e;
-			e.gamePaused = this->gamePaused;
-			g_frameEventDispatcher.dispatch(e);
-		}
+	auto oldShutdown = (void (*)(bool))(RelocationManager::s_baseAddr + offset::GameShutdownFunction);
+
+	void shutdown(bool arg0)
+	{
+		g_shutdownEventDispatcher.dispatch(ShutdownEvent());
+		oldShutdown(arg0);
 	}
 
 	void hookEngine()
 	{
 		DetourAttach((void**)UnkEngine::_onFrame_GetPtrAddr(), (void*)GetFnAddr(&UnkEngine::onFrame));
+		DetourAttach((void**)&oldShutdown, static_cast<void*>(shutdown));
 	}
 
 	void unhookEngine()
 	{
 		DetourDetach((void**)UnkEngine::_onFrame_GetPtrAddr(), (void*)GetFnAddr(&UnkEngine::onFrame));
+		DetourDetach((void**)&oldShutdown, static_cast<void*>(shutdown));
 	}
 
 	void hookAll()
