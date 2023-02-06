@@ -41,12 +41,6 @@ namespace hdt
 		return IDStr(buffer);
 	}
 
-	inline bool isFirstPersonSkeleton(NiNode* npc)
-	{
-		if (!npc) return false;
-		return findNode(npc, "Camera1st [Cam1]") ? true : false;
-	}
-
 	NiNode* getNpcNode(NiNode* skeleton)
 	{
 		// TODO: replace this with a generic skeleton fixing configuration option
@@ -741,8 +735,7 @@ namespace hdt
 
 	bool ActorManager::Skeleton::isPlayerCharacter() const
 	{
-		constexpr UInt32 playerFormID = 0x14;
-		return skeletonOwner == *g_thePlayer.GetPtr() || (skeleton->m_owner && skeleton->m_owner->formID == playerFormID);
+		return skeletonOwner == *g_thePlayer.GetPtr() || isNinodePlayerCharacter(skeleton);
 	}
 
 	bool ActorManager::Skeleton::isInPlayerView()

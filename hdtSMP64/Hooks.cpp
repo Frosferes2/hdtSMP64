@@ -29,103 +29,9 @@ namespace hdt
 		DEFINE_MEMBER_FN_HOOK(SkinSingleGeometry, void, offset::BSFaceGenNiNode_SkinSingleGeometry, NiNode* a_skeleton,
 		                      BSGeometry* a_geometry, char a_unk);
 
-#ifdef ANNIVERSARY_EDITION
-		void ProcessHeadPart(BGSHeadPart* headPart, NiNode* a_skeleton)
-		{
-			if (headPart)
-			{
-				NiAVObject* headNode = this->GetObjectByName(&headPart->partName.data);
-				if (headNode)
-				{
-					BSGeometry* headGeo = headNode->GetAsBSGeometry();
-					if (headGeo)
-						SkinSingleGeometry(a_skeleton, headGeo, 20);
-				}
-
-				BGSHeadPart* extraPart = NULL;
-				for (UInt32 p = 0; p < headPart->extraParts.count; p++)
-				{
-					if (headPart->extraParts.GetNthItem(p, extraPart))
-						ProcessHeadPart(extraPart, a_skeleton);
-				}
-			}
-		}
-
-		void SkinAllGeometryCalls(NiNode* a_skeleton, char a_unk)
-		{
-			bool needRegularCall = true;
-			if (ActorManager::instance()->skeletonNeedsParts(a_skeleton))
-			{
-				TESForm* form = LookupFormByID(a_skeleton->m_owner->formID);
-				Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
-				if (actor)
-				{
-					TESNPC* actorBase = DYNAMIC_CAST(actor->baseForm, TESForm, TESNPC);
-					UInt32 numHeadParts = 0;
-					BGSHeadPart** Headparts = nullptr;
-					if (CALL_MEMBER_FN(actorBase, HasOverlays)()) {
-						numHeadParts = GetNumActorBaseOverlays(actorBase);
-						Headparts = GetActorBaseOverlays(actorBase);
-					}
-					else {
-						numHeadParts = actorBase->numHeadParts;
-						Headparts = actorBase->headparts;
-					}
-					if (Headparts)
-					{
-						for (UInt32 i = 0; i < numHeadParts; i++) {
-							if (Headparts[i]) {
-								ProcessHeadPart(Headparts[i], a_skeleton);
-							}
-						}
-					}
-					if ((a_skeleton->m_owner && a_skeleton->m_owner->formID == 0x14) || ActorManager::instance()->m_skinNPCFaceParts)
-						needRegularCall = false;
-				}
-			}
-			if (needRegularCall)
-				CALL_MEMBER_FN(this, SkinAllGeometry)(a_skeleton, a_unk);
-		}
-#endif
-
-		void SkinSingleGeometry(NiNode* a_skeleton, BSGeometry* a_geometry, char a_unk)
-		{
-			const char* name = "";
-			uint32_t formId = 0x0;
-
-			if (a_skeleton->m_owner && a_skeleton->m_owner->baseForm)
-			{
-				auto bname = DYNAMIC_CAST(a_skeleton->m_owner->baseForm, TESForm, TESFullName);
-				if (bname)
-					name = bname->GetName();
-
-				auto bnpc = DYNAMIC_CAST(a_skeleton->m_owner->baseForm, TESForm, TESNPC);
-
-				if (bnpc && bnpc->nextTemplate)
-					formId = bnpc->nextTemplate->formID;
-			}
-
-			_MESSAGE("SkinSingleGeometry %s %d - %s, %s, (formid %08x base form %08x head template form %08x)",
-			         a_skeleton->m_name, a_skeleton->m_children.m_size, a_geometry->m_name, name,
-			         a_skeleton->m_owner ? a_skeleton->m_owner->formID : 0x0,
-			         a_skeleton->m_owner ? a_skeleton->m_owner->baseForm->formID : 0x0, formId);
-
-			if ((a_skeleton->m_owner && a_skeleton->m_owner->formID == 0x14) || ActorManager::instance()->m_skinNPCFaceParts)
-			{
-				SkinSingleHeadGeometryEvent e;
-				e.skeleton = a_skeleton;
-				e.geometry = a_geometry;
-				e.headNode = this;
-				g_skinSingleHeadGeometryEventDispatcher.dispatch(e);
-			}
-			else
-			{
-				CALL_MEMBER_FN(this, SkinSingleGeometry)(a_skeleton, a_geometry, a_unk);
-			}
-		}
-
 		void SkinAllGeometry(NiNode* a_skeleton, char a_unk)
 		{
+			// Logging
 			const char* name = "";
 			uint32_t formId = 0x0;
 
@@ -145,28 +51,136 @@ namespace hdt
 			         a_skeleton->m_name, a_skeleton->m_children.m_size, name,
 			         a_skeleton->m_owner ? a_skeleton->m_owner->formID : 0x0,
 			         a_skeleton->m_owner ? a_skeleton->m_owner->baseForm->formID : 0x0, formId);
+			// End logging
 
-			if ((a_skeleton->m_owner && a_skeleton->m_owner->formID == 0x14) || ActorManager::instance()->m_skinNPCFaceParts)
+			// Sending a ALL head geometry skinning event, and either call SkinAllGeometry or SkinAllGeometryCalls,
+			// when we're processing the skeleton of the PC, or when we are asked to skin NPC face parts.
+			if (ActorManager::instance()->m_skinNPCFaceParts || hdt::ActorManager::isNinodePlayerCharacter(a_skeleton))
 			{
 				SkinAllHeadGeometryEvent e;
 				e.skeleton = a_skeleton;
 				e.headNode = this;
 				g_skinAllHeadGeometryEventDispatcher.dispatch(e);
+
+				// The SkinAllGeometry function in the 1.6.x executables don't call all the required SkinSingleGeometry for the headparts,
+				// as it does in the 1.5.97 executable.
 #ifdef ANNIVERSARY_EDITION
 				SkinAllGeometryCalls(a_skeleton, a_unk);
 #else
 				CALL_MEMBER_FN(this, SkinAllGeometry)(a_skeleton, a_unk);
 #endif
+
 				e.hasSkinned = true;
 				g_skinAllHeadGeometryEventDispatcher.dispatch(e);
 			}
+
+			// Else we skin the skeleton. TODO What's the difference!?
 			else
+				CALL_MEMBER_FN(this, SkinAllGeometry)(a_skeleton, a_unk);
+		}
+
+		void SkinAllGeometryCalls(NiNode* a_skeleton, char a_unk)
+		{
+			// If this skeleton is the PC in 1st person, we skin it.
+			if (ActorManager::isFirstPersonSkeleton(a_skeleton))
 			{
 				CALL_MEMBER_FN(this, SkinAllGeometry)(a_skeleton, a_unk);
+				return;
+			}
+
+			TESForm* form = LookupFormByID(a_skeleton->m_owner->formID);
+			Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
+
+			// If we don't manage to cast the skeleton as an Actor, we skin it.
+			if (!actor) {
+				CALL_MEMBER_FN(this, SkinAllGeometry)(a_skeleton, a_unk);
+				return;
+			}
+
+			TESNPC* actorBase = DYNAMIC_CAST(actor->baseForm, TESForm, TESNPC);
+			auto actorBaseHasOverlays = CALL_MEMBER_FN(actorBase, HasOverlays)();
+			UInt32 numHeadParts = actorBaseHasOverlays ? GetNumActorBaseOverlays(actorBase) : actorBase->numHeadParts;
+			BGSHeadPart** Headparts = actorBaseHasOverlays ? GetActorBaseOverlays(actorBase) : actorBase->headparts;
+
+			// We skin recursively all headparts and their extra parts
+			if (Headparts)
+				for (UInt32 i = 0; i < numHeadParts; i++)
+					if (Headparts[i])
+						ProcessHeadPart(Headparts[i], a_skeleton);
+
+			// We skin anything that isn't the PC
+			if (!hdt::ActorManager::isNinodePlayerCharacter(a_skeleton))
+				CALL_MEMBER_FN(this, SkinAllGeometry)(a_skeleton, a_unk);
+		}
+
+		// Recursively SkinSingleGeometry of all headparts of a headpart
+		void ProcessHeadPart(BGSHeadPart* headPart, NiNode* a_skeleton)
+		{
+			constexpr int skinSingleGeometryUnk = 20;
+
+			if (!headPart)
+				return;
+
+			BSFixedString headPartName = headPart->partName;
+			if (headPartName)
+			{
+				NiAVObject* headNode = this->GetObjectByName(&headPartName.data);
+				if (headNode)
+				{
+					BSGeometry* headGeo = headNode->GetAsBSGeometry();
+					if (headGeo)
+						SkinSingleGeometry(a_skeleton, headGeo, skinSingleGeometryUnk);
+				}
+			}
+
+			BGSHeadPart* extraPart = NULL;
+			for (UInt32 p = 0; p < headPart->extraParts.count; p++)
+			{
+				if (headPart->extraParts.GetNthItem(p, extraPart))
+					ProcessHeadPart(extraPart, a_skeleton);
 			}
 		}
+
+		void SkinSingleGeometry(NiNode* a_skeleton, BSGeometry* a_geometry, char a_unk)
+		{
+			// Logging
+			const char* name = "";
+			uint32_t formId = 0x0;
+
+			if (a_skeleton->m_owner && a_skeleton->m_owner->baseForm)
+			{
+				auto bname = DYNAMIC_CAST(a_skeleton->m_owner->baseForm, TESForm, TESFullName);
+				if (bname)
+					name = bname->GetName();
+
+				auto bnpc = DYNAMIC_CAST(a_skeleton->m_owner->baseForm, TESForm, TESNPC);
+
+				if (bnpc && bnpc->nextTemplate)
+					formId = bnpc->nextTemplate->formID;
+			}
+
+			_MESSAGE("SkinSingleGeometry %s %d - %s, %s, (formid %08x base form %08x head template form %08x)",
+				a_skeleton->m_name, a_skeleton->m_children.m_size, a_geometry->m_name, name,
+				a_skeleton->m_owner ? a_skeleton->m_owner->formID : 0x0,
+				a_skeleton->m_owner ? a_skeleton->m_owner->baseForm->formID : 0x0, formId);
+			// End Logging
+
+			// Sending a SINGLE head geometry skinning event when we're processing the skeleton of the PC, or when we are asked to skin NPC face parts.
+			if (ActorManager::instance()->m_skinNPCFaceParts || hdt::ActorManager::isNinodePlayerCharacter(a_skeleton))
+			{
+				SkinSingleHeadGeometryEvent e;
+				e.skeleton = a_skeleton;
+				e.geometry = a_geometry;
+				e.headNode = this;
+				g_skinSingleHeadGeometryEventDispatcher.dispatch(e);
+			}
+
+			// Else we skin the skeleton. TODO What's the difference!?
+			else
+				CALL_MEMBER_FN(this, SkinSingleGeometry)(a_skeleton, a_geometry, a_unk);
+		}
 	};
-	
+
 	RelocAddr<uintptr_t> BoneLimit(offset::BSFaceGenModelExtraData_BoneLimit);
 	
 	void hookFaceGen()

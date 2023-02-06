@@ -124,7 +124,6 @@ namespace hdt
 			// @param sourceOrientation the orientation of the camera
 			void calculateDistanceAndOrientationDifferenceFromSource(NiPoint3 sourcePosition, NiPoint3 sourceOrientation);
 
-			bool isPlayerCharacter() const;
 			bool isInPlayerView();
 			bool hasPhysics = false;
 			std::optional<NiPoint3> position() const;
@@ -167,6 +166,9 @@ namespace hdt
 			bool isActive = false;
 			float currentWindFactor = 0.f;
 			std::vector<Armor> armors;
+
+		public:
+			bool isPlayerCharacter() const;
 		};
 
 		bool m_shutdown = false;
@@ -185,6 +187,18 @@ namespace hdt
 
 		static IDStr armorPrefix(IDType id);
 		static IDStr headPrefix(IDType id);
+
+		inline static bool ActorManager::isFirstPersonSkeleton(NiNode* npc)
+		{
+			if (!npc) return false;
+			return findNode(npc, "Camera1st [Cam1]") ? true : false;
+		}
+
+		inline static bool ActorManager::isNinodePlayerCharacter(hdt::Ref<NiNode> skeleton)
+		{
+			constexpr UInt32 playerFormID = 0x14;
+			return skeleton->m_owner && skeleton->m_owner->formID == playerFormID;
+		}
 
 		void onEvent(const ArmorAttachEvent& e) override;
 
