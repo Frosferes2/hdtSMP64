@@ -13,6 +13,9 @@ subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
+#define BT_THREADSAFE 1
+#define BT_USE_PPL 1
+
 #if defined(_WIN32) && BT_THREADSAFE
 
 #include "LinearMath/btScalar.h"
