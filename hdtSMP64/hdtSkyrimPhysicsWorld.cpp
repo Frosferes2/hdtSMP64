@@ -189,7 +189,7 @@ namespace hdt
 		const auto oldValueWeight = a_smoothingSamples - 1;
 		if (!btFuzzyZero((m_windSpeed - btVector3(a_point->x, a_point->y, a_point->z)).length())) {
 			m_windSpeed.setValue((oldValueWeight * m_windSpeed.getX() + a_point->x * a_scale) / a_smoothingSamples, (oldValueWeight * m_windSpeed.getY() + a_point->y * a_scale) / a_smoothingSamples, (oldValueWeight * m_windSpeed.getZ() + a_point->z * a_scale) / a_smoothingSamples);
-			_DMESSAGE("Wind Speed now (%2.2g, %2.2g, %2.2g), target (%2.2g, %2.2g, %2.2g) using %d samples", m_windSpeed.getX(), m_windSpeed.getY(), m_windSpeed.getZ(), a_point->x * a_scale, a_point->y * a_scale, a_point->z * a_scale, a_smoothingSamples);
+			_DMESSAGE("Wind Speed now (%2.2g, %2.2g, %2.2g), target (%2.2g, %2.2g, %2.2g) using %d samples.", m_windSpeed.getX(), m_windSpeed.getY(), m_windSpeed.getZ(), a_point->x * a_scale, a_point->y * a_scale, a_point->z * a_scale, a_smoothingSamples);
 		}
 	}
 
