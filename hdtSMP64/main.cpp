@@ -29,7 +29,7 @@
 
 namespace hdt
 {
-	constexpr UInt32 hdtSMP64Version = 200400; // patch version + 10^2 * minor version + 10^5 * major version
+	constexpr UInt32 hdtSMP64Version = 200500; // patch version + 10^2 * minor version + 10^5 * major version
 
 	IDebugLog gLog;
 	EventDebugLogger g_eventDebugLogger;
