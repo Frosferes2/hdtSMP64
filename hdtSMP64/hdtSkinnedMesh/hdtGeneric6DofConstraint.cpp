@@ -2,13 +2,15 @@
 
 namespace hdt
 {
-	Generic6DofConstraint::Generic6DofConstraint(SkinnedMeshBone* a, SkinnedMeshBone* b, const btTransform& frameInA,
-	                                             const btTransform& frameInB)
-		: BoneScaleConstraint(a, b, static_cast<btTypedConstraint*>(this))
+	Generic6DofConstraint::Generic6DofConstraint(SkinnedMeshBone* a, SkinnedMeshBone* b, const std::function<void(const btTransform&, const btQsTransform&, const btQsTransform&, btTransform&, btTransform&)> func,
+	                                             const btTransform& frame)
+		: BoneScaleConstraint(a, b, func, frame, static_cast<btTypedConstraint*>(this))
 		  , btGeneric6DofSpring2Constraint(a->m_rig, b->m_rig, btTransform::getIdentity(), btTransform::getIdentity(), RO_XYZ)
 	{
-		auto fa = a->m_rigToLocal * frameInA;
-		auto fb = b->m_rigToLocal * frameInB;
+		btTransform frameInA, frameInB;
+		applyCalcFrame(calcFrame, frameInA, frameInB);
+		btTransform fa = m_boneA->m_rigToLocal * frameInA;
+		btTransform fb = m_boneB->m_rigToLocal * frameInB;
 		setFrames(fa, fb);
 
 		for (int i = 0; i < 6; ++i)
@@ -52,6 +54,15 @@ namespace hdt
 
 		m_scaleA = newScaleA;
 		m_scaleB = newScaleB;
+	}
+
+	void Generic6DofConstraint::updateFrame()
+	{
+		btTransform frameInA, frameInB;
+		applyCalcFrame(calcFrame, frameInA, frameInB);
+		btTransform fa = m_boneA->m_rigToLocal * frameInA;
+		btTransform fb = m_boneB->m_rigToLocal * frameInB;
+		setFrames(fa, fb);
 	}
 
 	//

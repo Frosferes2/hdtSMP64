@@ -23,6 +23,7 @@ namespace hdt
 		btRigidBody m_rig;
 		btTransform m_localToRig;
 		btTransform m_rigToLocal;
+		btQsTransform m_animTransform;
 		btQsTransform m_currentTransform;
 		btQsTransform m_origTransform;
 		btQsTransform m_origToSkeletonTransform;

@@ -31,6 +31,12 @@ namespace hdt
 
 	void SkinnedMeshSystem::writeTransform()
 	{
+		for (auto i : m_constraints)
+			i->updateFrame();
+
+		for (auto i : m_constraintGroups)
+			i->updateFrame();
+
 		for (int i = 0; i < m_bones.size(); ++i)
 		{
 			if (m_bones[i]->m_rig.isKinematicObject()) continue;

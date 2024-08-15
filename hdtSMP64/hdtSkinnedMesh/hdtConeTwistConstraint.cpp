@@ -2,13 +2,15 @@
 
 namespace hdt
 {
-	ConeTwistConstraint::ConeTwistConstraint(SkinnedMeshBone* a, SkinnedMeshBone* b, const btTransform& frameInA,
-	                                         const btTransform& frameInB)
-		: BoneScaleConstraint(a, b, static_cast<btConeTwistConstraint*>(this))
+	ConeTwistConstraint::ConeTwistConstraint(SkinnedMeshBone* a, SkinnedMeshBone* b, const std::function<void(const btTransform&, const btQsTransform&, const btQsTransform&, btTransform&, btTransform&)> func,
+	                                         const btTransform& frame)
+		: BoneScaleConstraint(a, b, func, frame, static_cast<btConeTwistConstraint*>(this))
 		  , btConeTwistConstraint(a->m_rig, b->m_rig, btTransform::getIdentity(), btTransform::getIdentity())
 	{
-		auto fa = a->m_rigToLocal * frameInA;
-		auto fb = b->m_rigToLocal * frameInB;
+		btTransform frameInA, frameInB;
+		applyCalcFrame(calcFrame, frameInA, frameInB);
+		btTransform fa = m_boneA->m_rigToLocal * frameInA;
+		btTransform fb = m_boneB->m_rigToLocal * frameInB;
 		setFrames(fa, fb);
 
 		enableMotor(false); // motor temporary not support
@@ -29,5 +31,14 @@ namespace hdt
 		setFrames(frameA, frameB);
 		m_scaleA = newScaleA;
 		m_scaleB = newScaleB;
+	}
+
+	void ConeTwistConstraint::updateFrame()
+	{
+		btTransform frameInA, frameInB;
+		applyCalcFrame(calcFrame, frameInA, frameInB);
+		btTransform fa = m_boneA->m_rigToLocal * frameInA;
+		btTransform fb = m_boneB->m_rigToLocal * frameInB;
+		setFrames(fa, fb);
 	}
 }

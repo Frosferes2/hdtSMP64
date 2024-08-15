@@ -3,10 +3,10 @@
 namespace hdt
 {
 	StiffSpringConstraint::StiffSpringConstraint(SkinnedMeshBone* a, SkinnedMeshBone* b)
-		: BoneScaleConstraint(a, b, this)
+		: BoneScaleConstraint(a, b, [](const btTransform&, const btQsTransform&, const btQsTransform&, btTransform&, btTransform&) {}, btTransform::getIdentity(), this)
 		  , btTypedConstraint(MAX_CONSTRAINT_TYPE, a->m_rig, b->m_rig)
 	{
-		auto distance = a->m_currentTransform.getOrigin().distance(b->m_currentTransform.getOrigin());
+		auto distance = a->m_animTransform.getOrigin().distance(b->m_animTransform.getOrigin());
 		m_equilibriumPoint = m_minDistance = m_maxDistance = distance;
 		m_oldDiff = 0;
 		m_stiffness = 0;
@@ -36,6 +36,10 @@ namespace hdt
 
 		m_scaleA = newScaleA;
 		m_scaleB = newScaleB;
+	}
+
+	void StiffSpringConstraint::updateFrame()
+	{
 	}
 
 	void StiffSpringConstraint::getInfo1(btConstraintInfo1* info)

@@ -1258,7 +1258,7 @@ namespace hdt
 		return true;
 	}
 
-	btQuaternion rotFromAtoB(const btVector3& a, const btVector3& b)
+	inline btQuaternion rotFromAtoB(const btVector3& a, const btVector3& b)
 	{
 		auto axis = a.cross(b);
 		if (axis.fuzzyZero()) return btQuaternion::getIdentity();
@@ -1268,33 +1268,35 @@ namespace hdt
 		return btQuaternion(axis, angle);
 	}
 
-	void SkyrimSystemCreator::calcFrame(FrameType type, const btTransform& frame, const btQsTransform& trA,
-	                                 const btQsTransform& trB, btTransform& frameA, btTransform& frameB)
-	{
-		btQsTransform frameInWorld;
+	std::function<void(const btTransform&, const btQsTransform&, const btQsTransform&, btTransform&, btTransform&)> SkyrimSystemCreator::parseFrameFunc(FrameType type) {
 		switch (type)
 		{
 		case FrameInA:
-			frameA = frame;
-			frameInWorld = trA * frame;
-			frameB = (trB.inverse() * frameInWorld).asTransform();
-			break;
+			return [](const btTransform& frame, const btQsTransform& trA, const btQsTransform& trB, btTransform& frameA, btTransform& frameB) {
+				btQsTransform frameInWorld;
+				frameA = frame;
+				frameInWorld = trA * frame;
+				frameB = (trB.inverse() * frameInWorld).asTransform();
+				};
 		case FrameInB:
-			frameB = frame;
-			frameInWorld = trB * frameB;
-			frameA = (trA.inverse() * frameInWorld).asTransform();
-			break;
+			return [](const btTransform& frame, const btQsTransform& trA, const btQsTransform& trB, btTransform& frameA, btTransform& frameB) {
+				btQsTransform frameInWorld;
+				frameB = frame;
+				frameInWorld = trB * frameB;
+				frameA = (trA.inverse() * frameInWorld).asTransform();
+				};
 		case FrameInLerp:
-			{
+			return [](const btTransform& frame, const btQsTransform& trA, const btQsTransform& trB, btTransform& frameA, btTransform& frameB) {
+				btQsTransform frameInWorld;
 				auto trans = trA.getOrigin().lerp(trB.getOrigin(), frame.getOrigin().x());
 				auto rot = trA.getBasis().slerp(trB.getBasis(), frame.getOrigin().y());
 				frameInWorld = btQsTransform(rot, trans);
 				frameA = (trA.inverse() * frameInWorld).asTransform();
 				frameB = (trB.inverse() * frameInWorld).asTransform();
-				break;
-			}
+				};
 		case AWithXPointToB:
-			{
+			return [](const btTransform& frame, const btQsTransform& trA, const btQsTransform& trB, btTransform& frameA, btTransform& frameB) {
+				btQsTransform frameInWorld;
 				btMatrix3x3 matr(trA.getBasis());
 				frameInWorld = trA;
 				auto old = matr.getColumn(0).normalized();
@@ -1303,10 +1305,10 @@ namespace hdt
 				frameInWorld.getBasis() *= q;
 				frameA = (trA.inverse() * frameInWorld).asTransform();
 				frameB = (trB.inverse() * frameInWorld).asTransform();
-				break;
-			}
+				};
 		case AWithYPointToB:
-			{
+			return [](const btTransform& frame, const btQsTransform& trA, const btQsTransform& trB, btTransform& frameA, btTransform& frameB) {
+				btQsTransform frameInWorld;
 				btMatrix3x3 matr(trA.getBasis());
 				frameInWorld = trA;
 				auto old = matr.getColumn(1).normalized();
@@ -1315,10 +1317,10 @@ namespace hdt
 				frameInWorld.getBasis() *= q;
 				frameA = (trA.inverse() * frameInWorld).asTransform();
 				frameB = (trB.inverse() * frameInWorld).asTransform();
-				break;
-			}
+				};
 		case AWithZPointToB:
-			{
+			return [](const btTransform& frame, const btQsTransform& trA, const btQsTransform& trB, btTransform& frameA, btTransform& frameB) {
+				btQsTransform frameInWorld;
 				btMatrix3x3 matr(trA.getBasis());
 				frameInWorld = trA;
 				auto old = matr.getColumn(2).normalized();
@@ -1327,10 +1329,73 @@ namespace hdt
 				frameInWorld.getBasis() *= q;
 				frameA = (trA.inverse() * frameInWorld).asTransform();
 				frameB = (trB.inverse() * frameInWorld).asTransform();
-				break;
-			}
+				};
 		}
-	}
+	};
+
+	//void SkyrimSystemCreator::calcFrame(FrameType type, const btTransform& frame, const btQsTransform& trA,
+	//                                 const btQsTransform& trB, btTransform& frameA, btTransform& frameB)
+	//{
+	//	btQsTransform frameInWorld;
+	//	switch (type)
+	//	{
+	//	case FrameInA:
+	//		frameA = frame;
+	//		frameInWorld = trA * frame;
+	//		frameB = (trB.inverse() * frameInWorld).asTransform();
+	//		break;
+	//	case FrameInB:
+	//		frameB = frame;
+	//		frameInWorld = trB * frameB;
+	//		frameA = (trA.inverse() * frameInWorld).asTransform();
+	//		break;
+	//	case FrameInLerp:
+	//		{
+	//			auto trans = trA.getOrigin().lerp(trB.getOrigin(), frame.getOrigin().x());
+	//			auto rot = trA.getBasis().slerp(trB.getBasis(), frame.getOrigin().y());
+	//			frameInWorld = btQsTransform(rot, trans);
+	//			frameA = (trA.inverse() * frameInWorld).asTransform();
+	//			frameB = (trB.inverse() * frameInWorld).asTransform();
+	//			break;
+	//		}
+	//	case AWithXPointToB:
+	//		{
+	//			btMatrix3x3 matr(trA.getBasis());
+	//			frameInWorld = trA;
+	//			auto old = matr.getColumn(0).normalized();
+	//			auto a2b = (trB.getOrigin() - trA.getOrigin()).normalized();
+	//			auto q = rotFromAtoB(old, a2b);
+	//			frameInWorld.getBasis() *= q;
+	//			frameA = (trA.inverse() * frameInWorld).asTransform();
+	//			frameB = (trB.inverse() * frameInWorld).asTransform();
+	//			break;
+	//		}
+	//	case AWithYPointToB:
+	//		{
+	//			btMatrix3x3 matr(trA.getBasis());
+	//			frameInWorld = trA;
+	//			auto old = matr.getColumn(1).normalized();
+	//			auto a2b = (trB.getOrigin() - trA.getOrigin()).normalized();
+	//			auto q = rotFromAtoB(old, a2b);
+	//			frameInWorld.getBasis() *= q;
+	//			frameA = (trA.inverse() * frameInWorld).asTransform();
+	//			frameB = (trB.inverse() * frameInWorld).asTransform();
+	//			break;
+	//		}
+	//	case AWithZPointToB:
+	//		{
+	//			btMatrix3x3 matr(trA.getBasis());
+	//			frameInWorld = trA;
+	//			auto old = matr.getColumn(2).normalized();
+	//			auto a2b = (trB.getOrigin() - trA.getOrigin()).normalized();
+	//			auto q = rotFromAtoB(old, a2b);
+	//			frameInWorld.getBasis() *= q;
+	//			frameA = (trA.inverse() * frameInWorld).asTransform();
+	//			frameB = (trB.inverse() * frameInWorld).asTransform();
+	//			break;
+	//		}
+	//	}
+	//}
 
 	Ref<Generic6DofConstraint> SkyrimSystemCreator::readGenericConstraint()
 	{
@@ -1347,14 +1412,14 @@ namespace hdt
 
 		auto cinfo = getGenericConstraintTemplate(clsname);
 		readGenericConstraintTemplate(cinfo);
-		btTransform frameA, frameB;
-		calcFrame(cinfo.frameType, cinfo.frame, trA, trB, frameA, frameB);
+		//btTransform frameA, frameB;
+		//calcFrame(cinfo.frameType, cinfo.frame, trA, trB, frameA, frameB);
 
 		Ref<Generic6DofConstraint> constraint;
 		if (cinfo.useLinearReferenceFrameA)
-			constraint = new Generic6DofConstraint(bodyB, bodyA, frameB, frameA);
+			constraint = new Generic6DofConstraint(bodyB, bodyA, parseFrameFunc(cinfo.frameType), cinfo.frame);
 		else
-			constraint = new Generic6DofConstraint(bodyA, bodyB, frameA, frameB);
+			constraint = new Generic6DofConstraint(bodyA, bodyB, parseFrameFunc(cinfo.frameType), cinfo.frame);
 
 		constraint->setLinearLowerLimit(cinfo.linearLowerLimit);
 		constraint->setLinearUpperLimit(cinfo.linearUpperLimit);
@@ -1538,10 +1603,10 @@ namespace hdt
 
 		auto cinfo = getConeTwistConstraintTemplate(clsname);
 		readConeTwistConstraintTemplate(cinfo);
-		btTransform frameA, frameB;
-		calcFrame(cinfo.frameType, cinfo.frame, trA, trB, frameA, frameB);
+		//btTransform frameA, frameB;
+		//calcFrame(cinfo.frameType, cinfo.frame, trA, trB, frameA, frameB);
 
-		Ref<ConeTwistConstraint> constraint = new ConeTwistConstraint(bodyA, bodyB, frameA, frameB);
+		Ref<ConeTwistConstraint> constraint = new ConeTwistConstraint(bodyA, bodyB, parseFrameFunc(cinfo.frameType), cinfo.frame);
 		constraint->setLimit(cinfo.swingSpan1, cinfo.swingSpan2, cinfo.twistSpan, cinfo.limitSoftness, cinfo.biasFactor,
 		                     cinfo.relaxationFactor);
 

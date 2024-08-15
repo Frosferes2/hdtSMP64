@@ -103,9 +103,11 @@ namespace hdt
 		static void calcFrame(FrameType type, const btTransform& frame, const btQsTransform& trA,
 		                      const btQsTransform& trB, btTransform& frameA, btTransform& frameB);
 
+		std::function<void(const btTransform&, const btQsTransform&, const btQsTransform&, btTransform&, btTransform&)> parseFrameFunc(FrameType);
+
 		struct GenericConstraintTemplate
 		{
-			FrameType frameType = FrameInB;
+			FrameType frameType = FrameType::FrameInB;
 			bool useLinearReferenceFrameA = false;
 			btTransform frame = btTransform::getIdentity();
 			btVector3 linearLowerLimit = btVector3(1, 1, 1);
@@ -160,7 +162,7 @@ namespace hdt
 		struct ConeTwistConstraintTemplate
 		{
 			btTransform frame = btTransform::getIdentity();
-			FrameType frameType = FrameInB;
+			FrameType frameType = FrameType::FrameInB;
 			float swingSpan1 = 0;
 			float swingSpan2 = 0;
 			float twistSpan = 0;

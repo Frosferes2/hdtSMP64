@@ -2,12 +2,18 @@
 
 namespace hdt
 {
-	BoneScaleConstraint::BoneScaleConstraint(SkinnedMeshBone* a, SkinnedMeshBone* b, btTypedConstraint* constraint)
+	BoneScaleConstraint::BoneScaleConstraint(SkinnedMeshBone* a, SkinnedMeshBone* b, std::function<void(const btTransform&, const btQsTransform&, const btQsTransform&, btTransform&, btTransform&)> f, btTransform frame, btTypedConstraint* constraint)
 	{
 		m_boneA = a;
 		m_boneB = b;
+		m_frame = frame;
 		m_scaleA = m_scaleB = 1;
 		m_constraint = constraint;
+	}
+
+	void BoneScaleConstraint::applyCalcFrame(std::function<void(const btTransform&, const btQsTransform&, const btQsTransform&, btTransform&, btTransform&)> calcFrame, btTransform& frameA, btTransform& frameB) {
+		_MESSAGE("Apply calc called");
+		calcFrame(m_frame, m_boneA->m_animTransform, m_boneB->m_animTransform, frameA, frameB);
 	}
 
 	BoneScaleConstraint::~BoneScaleConstraint()

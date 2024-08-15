@@ -7,6 +7,8 @@ namespace hdt
 	SkyrimBone::SkyrimBone(IDStr name, NiNode* node, NiNode* skeleton, btRigidBody::btRigidBodyConstructionInfo& ci)
 		: SkinnedMeshBone(name, ci), m_node(node), m_skeleton(skeleton)
 	{
+		m_animTransform = convertNi(node->m_worldTransform);
+
 		if (ci.m_mass)
 			m_rig.setCollisionFlags(0);
 		else m_rig.setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
@@ -102,6 +104,7 @@ namespace hdt
 
 	void SkyrimBone::writeTransform()
 	{
+		m_animTransform = convertNi(m_node->m_worldTransform);
 		//if (m_rig.isStaticOrKinematicObject()) return;
 		auto transform = m_rig.getWorldTransform() * m_rigToLocal;
 

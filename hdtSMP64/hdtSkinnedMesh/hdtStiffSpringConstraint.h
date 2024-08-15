@@ -13,6 +13,7 @@ namespace hdt
 		StiffSpringConstraint(SkinnedMeshBone* a, SkinnedMeshBone* b);
 
 		void scaleConstraint() override;
+		void updateFrame() override;
 
 		float m_minDistance;
 		float m_maxDistance;
